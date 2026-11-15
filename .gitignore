@@ -1,4 +1,6 @@
 # Python stuff
+.pytest_cache/
+.venv/
 *.egg-info
 .coverage
 __pycache__

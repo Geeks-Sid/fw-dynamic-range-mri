@@ -68,9 +68,10 @@ def calc_dr(img_path, headmask_path):
     # print(DR)
     return DR
 
-img_path = sys.argv[1]
-headmask_path = sys.argv[2]
+if __name__ == "__main__":
+    img_path = sys.argv[1]
+    headmask_path = sys.argv[2]
 
-DR = calc_dr(img_path, headmask_path)
-log.info(f"Estimated dynamic range of the input image: {str(DR)}")
-print(f"Estimated dynamic range of the input image: {str(DR)}")
+    DR = calc_dr(img_path, headmask_path)
+    log.info(f"Estimated dynamic range of the input image: {str(DR)}")
+    print(f"Estimated dynamic range of the input image: {str(DR)}")
