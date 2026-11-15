@@ -38,7 +38,7 @@ def calc_dr(img_path, headmask_path):
     background_bool = np.logical_not(mask_data_reshaped) # create a background mask (opposite of head mask)
     # new_img = nib.Nifti1Image(background_bool, img.affine, img.header)
     # nib.save(new_img, 'background_mask.nii.gz')
-    img_data_background = img_data*background_bool
+    img_data_background = img_data[background_bool] # 1-D: background voxels only
     # new_img = nib.Nifti1Image(img_data_background, img.affine, img.header)
     # nib.save(new_img, 'image_background.nii.gz')
 
@@ -49,7 +49,7 @@ def calc_dr(img_path, headmask_path):
 
     # ========================= calculate the DR =========================
     ## set up static vars
-    sigma = np.std(img_data_background) # noise standard deviation
+    sigma = np.std(img_data_background) # noise standard deviation (background voxels only)
     sigma_squared = sigma**2
     N = img_data.size # total number of image points
     # print(f'sigma = {sigma} / sigma^2 = {sigma_squared}')
