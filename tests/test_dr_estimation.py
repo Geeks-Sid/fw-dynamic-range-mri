@@ -25,6 +25,10 @@ def test_get_a_scales_by_sigma():
     assert get_a(2.0, 2.0) == pytest.approx(1.8)  # x = Mn / sigma = 1
 
 
+def test_get_a_accepts_arrays():
+    np.testing.assert_allclose(get_a(1.0, np.array([0, 1, 3, 10])), [2.2, 1.8, 1, 1])
+
+
 def reference_dr(img, mask):
     """The formula of Gabr et al. (2008), written as literally as possible."""
     sigma = img[mask == 0].std()
@@ -69,3 +73,10 @@ def test_sigma_ignores_head_voxels_zeroed_out_of_the_background(tmp_path):
     mask[0, :, :] = 0
     dr = calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii"))
     assert dr == pytest.approx(reference_dr(img, mask), rel=1e-6)
+
+
+def test_dr_of_a_4d_image(tmp_path, head):
+    img, mask = head
+    img4, mask4 = np.stack([img, img * 2], -1), np.stack([mask, mask], -1)
+    dr = calc_dr(save(tmp_path, img4, "img.nii"), save(tmp_path, mask4, "mask.nii"))
+    assert dr == pytest.approx(reference_dr(img4, mask4), rel=1e-6)

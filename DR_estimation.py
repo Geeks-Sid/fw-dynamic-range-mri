@@ -1,72 +1,34 @@
-# caluclation from: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4264049/
+# calculation from: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4264049/
 
-# img_path = 't1_to_t1ce.nii.gz'
-# headmask_path = 'Head_Mask_revised.nii.gz'
+import logging
+import sys
 
 import nibabel as nib
 import numpy as np
-import sys
 
-import logging
 log = logging.getLogger(__name__)
 
+
 def get_a(sigma, Mn):
-    x = Mn/sigma
-    if x >= 3:
-        a = 1
-    else:
-        a = 2.2 - (0.4*x)
-    return a
+    """Noise-correction factor a: 2.2 - 0.4*(Mn/sigma) below Mn/sigma = 3, else 1. Accepts arrays."""
+    x = Mn / sigma
+    return np.where(x >= 3, 1.0, 2.2 - 0.4 * x)
+
 
 def calc_dr(img_path, headmask_path):
-    # ========================= initialize inputs =========================
     log.info('Loading input images')
-    ## load image
-    img = nib.load(img_path)
-    img_data = img.get_fdata()
-    # img_data = np.float32(img_data)
-    img_data = np.float64(img_data)
+    img_data = nib.load(img_path).get_fdata()  # float64
+    mask_data = nib.load(headmask_path).get_fdata()
 
-    ## load head mask
-    mask = nib.load(headmask_path)
-    mask_data = mask.get_fdata()
-    mask_data_reshaped = mask_data
-    # mask_data_reshaped = np.transpose(mask_data, (1,2,0)) # not 2,1,0
-    # mask_data_reshaped = np.flipud(mask_data_reshaped)
-    masked_img_data = img_data*mask_data_reshaped
-    ## get the image background
-    background_bool = np.logical_not(mask_data_reshaped) # create a background mask (opposite of head mask)
-    # new_img = nib.Nifti1Image(background_bool, img.affine, img.header)
-    # nib.save(new_img, 'background_mask.nii.gz')
-    img_data_background = img_data[background_bool] # 1-D: background voxels only
-    # new_img = nib.Nifti1Image(img_data_background, img.affine, img.header)
-    # nib.save(new_img, 'image_background.nii.gz')
+    # noise standard deviation, from the background (non-head) voxels only
+    sigma = np.std(img_data[np.logical_not(mask_data)])
+    N = img_data.size  # total number of image points
 
-    ## head-mask the input image
-    # img_in_masked = img_data*mask_data_reshaped
-    # new_img = nib.Nifti1Image(img_in_masked, img.affine, img.header)
-    # nib.save(new_img, 'headmasked_input.nii.gz')
-
-    # ========================= calculate the DR =========================
-    ## set up static vars
-    sigma = np.std(img_data_background) # noise standard deviation (background voxels only)
-    sigma_squared = sigma**2
-    N = img_data.size # total number of image points
-    # print(f'sigma = {sigma} / sigma^2 = {sigma_squared}')
-    # print(f'Total number of image points: {N}')
     log.info('Calculating the dynamic range...')
-    out = []
-    for n in np.nditer(img_data): # for each image point, where n = magnitude signaln (loops over every voxel in image)
-    # for n in np.nditer(masked_img_data): # for each image point, where n = magnitude signaln (loops over every voxel within the head mask)
-        n_squared = n**2
-        a = get_a(sigma, n)
-        var1 = np.sign(n_squared - (a*sigma_squared))
-        var2 = np.sqrt(abs(n_squared - (a*sigma_squared)))
-        out.append(var1 * var2)
+    # sgn(Mn^2 - a*sigma^2) * sqrt(|Mn^2 - a*sigma^2|), for every voxel at once
+    diff = img_data**2 - get_a(sigma, img_data) * sigma**2
+    return np.sum(np.sign(diff) * np.sqrt(np.abs(diff))) / (sigma * np.sqrt(N))
 
-    DR = (1 / (sigma*np.sqrt(N))) * sum(out)
-    # print(DR)
-    return DR
 
 if __name__ == "__main__":
     img_path = sys.argv[1]
