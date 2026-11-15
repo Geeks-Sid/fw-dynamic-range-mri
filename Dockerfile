@@ -7,13 +7,17 @@ FROM python:3.9.7-slim-buster
 ENV FLYWHEEL=/flywheel/v0
 RUN mkdir -p ${FLYWHEEL}
 WORKDIR ${FLYWHEEL}
-COPY requirements.txt run DR_estimation.py manifest.json README.md $FLYWHEEL/
 
 #############################################
-# install required dependencies
+# install required dependencies (before the code, so code changes reuse this layer)
+COPY requirements.txt $FLYWHEEL/
 RUN pip install -r requirements.txt
 
 #############################################
+# copy the gear
+COPY run.py manifest.json README.md $FLYWHEEL/
+COPY fw_dynamic_range_mri $FLYWHEEL/fw_dynamic_range_mri
+
+#############################################
 # Configure entrypoint
-RUN chmod a+x /flywheel/v0/run
-ENTRYPOINT ["/flywheel/v0/run"]
+ENTRYPOINT ["python", "/flywheel/v0/run.py"]

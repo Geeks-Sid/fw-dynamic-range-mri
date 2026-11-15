@@ -4,7 +4,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from DR_estimation import calc_dr, get_a  # import must not need command line arguments
+from fw_dynamic_range_mri.dr_estimation import calc_dr, get_a
 
 
 @pytest.mark.parametrize(

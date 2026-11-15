@@ -1,7 +1,6 @@
 # calculation from: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4264049/
 
 import logging
-import sys
 
 import nibabel as nib
 import numpy as np
@@ -53,12 +52,3 @@ def calc_dr(img_path, headmask_path):
     # sgn(Mn^2 - a*sigma^2) * sqrt(|Mn^2 - a*sigma^2|), for every voxel at once
     diff = img_data**2 - get_a(sigma, img_data) * sigma**2
     return np.sum(np.sign(diff) * np.sqrt(np.abs(diff))) / (sigma * np.sqrt(N))
-
-
-if __name__ == "__main__":
-    img_path = sys.argv[1]
-    headmask_path = sys.argv[2]
-
-    DR = calc_dr(img_path, headmask_path)
-    log.info(f"Estimated dynamic range of the input image: {str(DR)}")
-    print(f"Estimated dynamic range of the input image: {str(DR)}")
