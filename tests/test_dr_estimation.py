@@ -80,3 +80,56 @@ def test_dr_of_a_4d_image(tmp_path, head):
     img4, mask4 = np.stack([img, img * 2], -1), np.stack([mask, mask], -1)
     dr = calc_dr(save(tmp_path, img4, "img.nii"), save(tmp_path, mask4, "mask.nii"))
     assert dr == pytest.approx(reference_dr(img4, mask4), rel=1e-6)
+
+
+def _calc(tmp_path, img, mask, mask_affine=None):
+    return calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii", mask_affine))
+
+
+def test_mismatched_shapes_are_rejected_even_when_numpy_could_broadcast(tmp_path, head):
+    img, mask = head
+    with pytest.raises(ValueError, match="does not match head_mask shape"):
+        _calc(tmp_path, np.stack([img] * 10, -1), mask)  # (10, 10, 10, 10) vs (10, 10, 10)
+
+
+@pytest.mark.parametrize(
+    "edit, match",
+    [
+        (lambda img, mask: img.__setitem__((0, 0, 0), np.nan), "NaN or infinite"),
+        (lambda img, mask: mask.__setitem__((0, 0, 0), np.inf), "NaN or infinite"),
+        (lambda img, mask: mask.fill(1), "no background"),
+        (lambda img, mask: mask.fill(0), "no head"),
+        (lambda img, mask: img.__setitem__(mask == 0, 0), "zero variance"),
+    ],
+)
+def test_unusable_inputs_are_rejected(tmp_path, head, edit, match):
+    img, mask = head
+    edit(img, mask)
+    with pytest.raises(ValueError, match=match):
+        _calc(tmp_path, img, mask)
+
+
+def test_misaligned_mask_is_warned_about(tmp_path, head, caplog):
+    img, mask = head
+    _calc(tmp_path, img, mask, mask_affine=np.diag([2, 2, 2, 1]))
+    assert "different affines" in caplog.text
+
+
+def test_non_binary_mask_is_warned_about(tmp_path, head, caplog):
+    img, mask = head
+    mask[2, 2, 2] = 0.5
+    _calc(tmp_path, img, mask)
+    assert "not binary" in caplog.text
+
+
+def test_negative_values_are_warned_about(tmp_path, head, caplog):
+    img, mask = head
+    img[0, 0, 0] = -1
+    _calc(tmp_path, img, mask)
+    assert "negative values" in caplog.text
+
+
+def test_clean_inputs_do_not_warn(tmp_path, head, caplog):
+    img, mask = head
+    _calc(tmp_path, img, mask)
+    assert caplog.text == ""
