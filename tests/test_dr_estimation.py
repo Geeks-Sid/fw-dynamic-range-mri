@@ -60,8 +60,10 @@ def head(tmp_path):
 
 def test_dr_matches_the_paper_formula(tmp_path, head):
     img, mask = head
-    dr = calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii"))
-    assert dr == pytest.approx(reference_dr(img, mask), rel=1e-6)
+    res = calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii"))
+    assert res["dynamic_range"] == pytest.approx(reference_dr(img, mask), rel=1e-6)
+    assert res["noise_sigma"] == pytest.approx(img[mask == 0].std())
+    assert (res["n_voxels"], res["n_background_voxels"]) == (1000, 1000 - 6**3)
 
 
 def test_sigma_ignores_head_voxels_zeroed_out_of_the_background(tmp_path):
@@ -71,15 +73,16 @@ def test_sigma_ignores_head_voxels_zeroed_out_of_the_background(tmp_path):
     img[0, :, :] = 1.0
     img[0, ::2, :] = 3.0
     mask[0, :, :] = 0
-    dr = calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii"))
-    assert dr == pytest.approx(reference_dr(img, mask), rel=1e-6)
+    res = calc_dr(save(tmp_path, img, "img.nii"), save(tmp_path, mask, "mask.nii"))
+    assert res["noise_sigma"] == pytest.approx(1.0)
+    assert res["dynamic_range"] == pytest.approx(reference_dr(img, mask), rel=1e-6)
 
 
 def test_dr_of_a_4d_image(tmp_path, head):
     img, mask = head
     img4, mask4 = np.stack([img, img * 2], -1), np.stack([mask, mask], -1)
-    dr = calc_dr(save(tmp_path, img4, "img.nii"), save(tmp_path, mask4, "mask.nii"))
-    assert dr == pytest.approx(reference_dr(img4, mask4), rel=1e-6)
+    res = calc_dr(save(tmp_path, img4, "img.nii"), save(tmp_path, mask4, "mask.nii"))
+    assert res["dynamic_range"] == pytest.approx(reference_dr(img4, mask4), rel=1e-6)
 
 
 def _calc(tmp_path, img, mask, mask_affine=None):

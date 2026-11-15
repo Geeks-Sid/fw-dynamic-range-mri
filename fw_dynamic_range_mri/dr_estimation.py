@@ -51,4 +51,10 @@ def calc_dr(img_path, headmask_path):
     log.info('Calculating the dynamic range...')
     # sgn(Mn^2 - a*sigma^2) * sqrt(|Mn^2 - a*sigma^2|), for every voxel at once
     diff = img_data**2 - get_a(sigma, img_data) * sigma**2
-    return np.sum(np.sign(diff) * np.sqrt(np.abs(diff))) / (sigma * np.sqrt(N))
+    dr = np.sum(np.sign(diff) * np.sqrt(np.abs(diff))) / (sigma * np.sqrt(N))
+    return {
+        "dynamic_range": float(dr),  # linear ratio (not dB)
+        "noise_sigma": float(sigma),
+        "n_voxels": int(N),
+        "n_background_voxels": int(background.sum()),
+    }
